@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RA Prediction and Recommendations</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* General Styling */
+      body {
+        font-family: "Poppins", sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        margin: 0;
+        background-color: #0093e9;
+        background-image: linear-gradient(160deg, #0093e9 0%, #80d0c7 100%);
+      }
+      .container {
+        background: #ffffff;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        border-radius: 12px;
+        padding: 40px;
+        max-width: 900px; 
+        text-align: center;
+        margin: 20px;
+      }
+      h1 {
+        font-size: 2.5em; 
+        color: #333;
+        margin-bottom: 15px;
+        font-weight: 600; 
+        font-family: "Poppins", sans-serif;
+      }
+      h2 {
+        font-size: 2.5em; 
+        color: #4a90e2;
+        margin-bottom: 30px;
+        font-weight: 700; 
+        font-family: "Poppins", sans-serif;
+      }
+      #fileInput {
+        display: none;
+      }
+      .upload-btn,
+      .predict-btn {
+        display: inline-block;
+        padding: 15px 25px;
+        background-color: #4caf50;
+        color: white;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600; 
+        margin-bottom: 20px;
+        transition: background-color 0.3s;
+        font-size: 1.2em; 
+      }
+      .upload-btn:hover {
+        background-color: #45a049;
+      }
+      .predict-btn {
+        background-color: #2196f3;
+        margin-top: 20px;
+      }
+      .predict-btn:hover {
+        background-color: #1e87e5;
+      }
+      #preview {
+        width: 100%;
+        border-radius: 8px;
+        margin-top: 20px;
+        display: none;
+      }
+      .loader {
+        width: 80px;
+        aspect-ratio: 1;
+        display: flex;
+        animation: l10-0 2s infinite steps(1);
+        margin: 30px auto;
+      }
+      .loader::before,
+      .loader::after {
+        content: "";
+        flex: 1;
+        animation: l10-1 1s infinite linear alternate,
+          l10-2 2s infinite steps(1) -0.5s;
+      }
+      .loader::after {
+        --s: -1, -1;
+      }
+      @keyframes l10-0 {
+        0% {
+          transform: scaleX(1) rotate(0deg);
+        }
+        50% {
+          transform: scaleX(-1) rotate(-90deg);
+        }
+      }
+      @keyframes l10-1 {
+        0%,
+        5% {
+          transform: scale(var(--s, 1)) translate(0px) perspective(150px)
+            rotateY(0deg);
+        }
+        33% {
+          transform: scale(var(--s, 1)) translate(-10px) perspective(150px)
+            rotateX(0deg);
+        }
+        66% {
+          transform: scale(var(--s, 1)) translate(-10px) perspective(150px)
+            rotateX(-180deg);
+        }
+        95%,
+        100% {
+          transform: scale(var(--s, 1)) translate(0px) perspective(150px)
+            rotateX(-180deg);
+        }
+      }
+      @keyframes l10-2 {
+        0% {
+          background: #514b82;
+          border-radius: 0;
+        }
+        50% {
+          background: #25b09b;
+          border-radius: 100px 0 0 100px;
+        }
+      }
+      .loading {
+        display: none;
+        font-size: 1.5em;
+        font-weight: 600; /* Increased weight for loading text */
+        color: #333;
+        text-align: center;
+      }
+      .prediction-box {
+        margin-top: 30px;
+        font-size: 1.4em;
+        color: #333;
+        display: none;
+        text-align: left;
+      }
+      .prediction-stage {
+        font-weight: 700;
+        color: #4caf50;
+        font-size: 1.7em; /* Increased font size and weight */
+      }
+      .recommendations {
+        font-weight: 600;
+        color: #333;
+        font-size: 1.3em; /* Increased font size */
+      }
+      ul {
+        list-style-type: disc;
+        padding-left: 30px;
+      }
+      li {
+        margin-bottom: 10px; /* Spacing for list items */
+      }
+      @media (max-width: 768px) {
+        .container {
+          padding: 20px;
+        }
+        .upload-btn,
+        .predict-btn {
+          width: 100%;
+          padding: 12px;
+          font-size: 1.1em; /* Adjusted button font size for mobile */
+        }
+        h1,
+        h2 {
+          font-size: 2em; /* Adjusted font size for mobile */
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>INVESTIGATION OF CONTINUOUS MONITORING OF RHEUMATOID ARTHRITIS</h2>
+      <h1>Upload an Image for Prediction</h1>
+
+      <label for="fileInput" class="upload-btn">Choose Image</label>
+      <input type="file" id="fileInput" accept="image/*" />
+
+      <img id="preview" src="#" alt="Image preview" style="display: none" />
+
+      <button class="predict-btn" onclick="submitImage()">Predict</button>
+
+      <div class="loading" id="loading">
+        <div class="loader"></div>
+        <p>Processing... Please wait.</p>
+      </div>
+
+      <div class="prediction-box" id="prediction-box">
+        <div class="prediction-stage" id="prediction"></div>
+        <div class="recommendations" id="recommendations"></div>
+      </div>
+    </div>
+
+    <script>
+      const fileInput = document.getElementById("fileInput");
+      const preview = document.getElementById("preview");
+      const predictionBox = document.getElementById("prediction-box");
+      const prediction = document.getElementById("prediction");
+      const recommendations = document.getElementById("recommendations");
+      const loading = document.getElementById("loading");
+
+      fileInput.onchange = () => {
+        const file = fileInput.files[0];
+        if (file) {
+          preview.src = URL.createObjectURL(file);
+          preview.style.display = "block";
+          predictionBox.style.display = "none";
+        }
+      };
+
+      function submitImage() {
+        const file = fileInput.files[0];
+        if (!file) {
+          alert("Please select an image file first.");
+          return;
+        }
+
+        loading.style.display = "block"; // Show loading animation
+        const formData = new FormData();
+        formData.append("file", file);
+
+        fetch("/predict", {
+          method: "POST",
+          body: formData,
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            setTimeout(() => {
+              loading.style.display = "none"; // Hide loading animation
+              const stage = data.prediction;
+              let recommendationsHTML = "";
+
+              switch (stage) {
+                case 0:
+                  recommendationsHTML = `
+                    <p><strong>You have no issues in knee.</p>`;
+                  break;
+                case 1:
+                  recommendationsHTML = `
+                    <p><strong>Description:</strong> Minor joint narrowing with possible early signs of osteophytes.</p>
+                    <p><strong>Why in Grade 1:</strong>  This stage may indicate the very early development of RA, where mild inflammation and cartilage wear begin.</p>
+                    <p><strong>Prevention Techniques:</strong></p>
+                    <ul>
+                      <li>Exercise: Low-impact activities like swimming, cycling, and stretching to maintain joint mobility.</li>
+                      <li>Diet: Anti-inflammatory foods (omega-3-rich fish, nuts, and fruits) to reduce joint inflammation.</li>
+                      <li>Joint Protection: Avoid excessive weight on joints and practice good posture to minimize stress on the joints.</li>
+                      <li>Regular Check-ups: Early detection and consistent monitoring are key to managing RA in its early stages.</li>
+                    </ul>
+                  `;
+                  break;
+                case 2:
+                  recommendationsHTML = `
+                    <p><strong>Description:</strong> Clear presence of osteophytes and slight joint space narrowing.</p>
+                    <p><strong>Why in Grade 2:</strong> Joint cartilage is breaking down more visibly, with bone spurs forming due to chronic inflammation.</p>
+                    <p><strong>Ways to Move to Grade 1:</strong></p>
+                    <ul>
+                      <li>Physical Therapy: Strengthen surrounding muscles to provide better joint support.</li>
+                      <li>Medication: Use nonsteroidal anti-inflammatory drugs (NSAIDs) or DMARDs (disease-modifying antirheumatic drugs) to reduce inflammation and slow disease progression.</li>
+                      <li>Weight Management: Reducing body weight can significantly reduce stress on affected joints.</li>
+                      <li>Heat and Cold Therapy: Alternating hot and cold treatments can help alleviate pain and reduce inflammation.</li>
+                    </ul>
+                  `;
+                  break;
+                case 3:
+                  recommendationsHTML = `
+                    <p><strong>Description:</strong> Multiple osteophytes, more significant joint space narrowing, and mild sclerosis (hardening of tissues).</p>
+                    <p><strong>Why in Grade 2</strong> The condition has progressed to where there is marked joint degradation and some bone hardening.</p>
+                    <p><strong>Ways to Move to Grade 2:</strong></p>
+                    <ul>
+                      <li>Medication Adjustment: Consult a rheumatologist for stronger or adjusted medication plans, including corticosteroids if necessary.</li>
+                      <li>Assistive Devices: Use of braces or other aids to reduce joint stress and improve stability.</li>
+                      <li>Regular Exercise: Focus on range-of-motion exercises to improve flexibility and reduce stiffness.</li>
+                      <li>Occupational Therapy: Learn joint-sparing techniques and modifications to perform daily tasks with less pain.</li>
+                      <li>Anti-inflammatory Supplements: Consider turmeric, ginger, or other supplements, but consult a healthcare provider first.</li>
+                    </ul>
+                  `;
+                  break;
+                case 4:
+                  recommendationsHTML = `
+                    <p><strong>Description:</strong> Presence of large osteophytes, significant joint narrowing, and severe sclerosis, indicating advanced RA.</p>
+                    <p><strong>Why in Grade 4:</strong> The joint is heavily damaged, with little cartilage left, extensive bone spurs, and notable bone hardening.</p>
+                    <p><strong>Ways to Move to Grade 3:</strong></p>
+                    <ul>
+                      <li>Advanced Medications: Biologics or JAK inhibitors may be prescribed to manage symptoms and prevent further damage.</li>
+                      <li>Pain Management: Consider stronger pain management approaches, including possible injections or nerve blocks.</li>
+                      <li>Surgery Consideration: If joint function is severely limited, joint replacement or other surgical options may be necessary.</li>
+                      <li>Hydrotherapy: Gentle exercise in water can relieve pressure on joints and provide a safe environment to stay active.</li>
+                      <li>Support Groups and Counseling: Managing severe RA can be challenging, and emotional support can help with coping strategies.</li>
+                    </ul>
+                  `;
+                  break;
+                default:
+                  recommendationsHTML =
+                    "<p>Stage information is not available.</p>";
+              }
+
+              prediction.innerHTML = Stage: ${stage};
+              recommendations.innerHTML = recommendationsHTML;
+              predictionBox.style.display = "block";
+            }, 3000);
+          })
+          .catch((error) => {
+            loading.style.display = "none";
+            console.error("Error:", error);
+            prediction.innerHTML = "Error in prediction";
+            predictionBox.style.display = "block";
+          });
+      }
+    </script>
+  </body>
+</html>
